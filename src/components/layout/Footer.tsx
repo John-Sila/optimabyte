@@ -85,7 +85,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
+        <div className="mt-12 border-t border-border text-center pt-6 text-sm text-muted-foreground">
           <p>
             {siteConfig.fullName}, {siteConfig.founded} to present. All rights reserved.
           </p>
