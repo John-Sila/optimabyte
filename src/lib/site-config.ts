@@ -10,10 +10,10 @@ export const siteConfig = {
 
   // Replace with the real business WhatsApp number, digits only, country code first.
   // Example for Kenya: 2547XXXXXXXX
-  whatsappNumber: "254700000000",
+  whatsappNumber: "254717405109",
 
-  email: "info@optimabyte.com",
-  phone: "+254 700 000 000",
+  email: "optimabyte@gmail.com",
+  phone: "+254 717 405 109",
   location: "Nairobi, Kenya",
 
   social: {
