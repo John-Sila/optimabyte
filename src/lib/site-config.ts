@@ -17,7 +17,7 @@ export const siteConfig = {
   location: "Nairobi, Kenya",
 
   social: {
-    facebook: "https://facebook.com/optimabyte",
+    facebook: "https://web.facebook.com/profile.php?id=61593890707647",
     instagram: "https://instagram.com/optimabyte",
   },
 
