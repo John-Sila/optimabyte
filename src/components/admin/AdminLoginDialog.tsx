@@ -64,7 +64,7 @@ export default function AdminLoginDialog() {
           </div>
           <DialogTitle className="text-xl">Authenticating session</DialogTitle>
           <DialogDescription role="status" aria-live="polite">
-            Checking your device location before sign-in. If your browser asks for permission, choose Allow.
+            Checking your device before sign-in. If your browser asks for permission, choose Allow.
           </DialogDescription>
         </DialogHeader>
         <Button type="button" variant="ghost" className="w-full" onClick={cancelLocating}>
