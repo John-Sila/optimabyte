@@ -118,8 +118,10 @@ export async function setPortfolioImage(projectId: string, url: string | null) {
 // ------------------------------------------------------------ admin login log
 // Only the latest 5 admin sign-ins are kept. Each new sign-in is written, then
 // everything older than the 5th newest is deleted.
+// ... we've changed that,,, it's 10 now
 
-export const LOGIN_LOG_KEEP = 5;
+
+export const LOGIN_LOG_KEEP = 10;
 
 export interface LoginRecord {
   id: string;
