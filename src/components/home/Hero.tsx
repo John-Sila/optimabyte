@@ -22,7 +22,7 @@ export default function Hero() {
         <div>
           <p className="mb-5 inline-flex animate-fade-up items-center gap-2 rounded-full border border-gold-text/30 bg-gold/10 px-4 py-1.5 text-sm font-semibold text-gold-text">
             <span className="h-2 w-2 animate-pulse rounded-full bg-gold-text" />
-            Software, apps and systems from Nairobi
+            Software, apps and systems across Africa
           </p>
           <h1 className="animate-fade-up text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground [animation-delay:80ms] md:text-6xl 2xl:text-7xl">
             Software that runs <span className="text-gradient-gold">your operation.</span>
