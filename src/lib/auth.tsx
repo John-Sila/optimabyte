@@ -11,6 +11,7 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { firebaseConfigured } from "./firebase";
+import { holdGeo, requestPreciseLocation, takeGeo } from "./geo";
 import type { AdminUser } from "./auth-impl";
 
 interface AuthContextValue {
@@ -19,7 +20,7 @@ interface AuthContextValue {
   /** False only while we are restoring a saved admin session. */
   ready: boolean;
   loginOpen: boolean;
-  openLogin: () => void;
+  openLogin: () => void | Promise<void>;
   closeLogin: () => void;
   login: (password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -127,10 +128,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setReady(true);
       void startWatching();
       // Log device, time and location of this sign-in (runs in the background).
-      void import("./admin-data").then((m) => m.recordAdminLogin());
+      const geo = takeGeo();
+      void import("./admin-data").then((m) => m.recordAdminLogin(geo));
     },
     [startWatching],
   );
+
+  // The sign-in dialog only opens once the browser has given the precise
+  // location. If the person blocks it, the dialog does not show.
+  const locating = useRef(false);
+  const openLogin = useCallback(async () => {
+    if (locating.current) return;
+    if (!firebaseConfigured) {
+      setLoginOpen(true); // the dialog explains that sign-in is not set up yet
+      return;
+    }
+    locating.current = true;
+    try {
+      const res = await requestPreciseLocation();
+      if (res.geo) {
+        holdGeo(res.geo);
+        setLoginOpen(true);
+      } else {
+        holdGeo(null);
+        toast.error(
+          res.reason === "denied"
+            ? "Admin sign-in needs location access. Allow location for this site (padlock icon in the address bar > Location > Allow), then try again."
+            : "Could not get your location, so sign-in cannot start. Turn on location services and try again.",
+        );
+      }
+    } finally {
+      locating.current = false;
+    }
+  }, []);
 
   const endSession = useCallback(
     async (message?: string) => {
@@ -197,12 +227,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       admin,
       ready,
       loginOpen,
-      openLogin: () => setLoginOpen(true),
+      openLogin,
       closeLogin: () => setLoginOpen(false),
       login,
       logout,
     }),
-    [admin, ready, loginOpen, login, logout],
+    [admin, ready, loginOpen, openLogin, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

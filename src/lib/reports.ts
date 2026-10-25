@@ -8,9 +8,13 @@
 //     which identical phones can share),
 //   * public visitors cannot read, edit or delete reports.
 // The checks in this file only exist to give friendly errors.
+//
+// Visitors are never asked for location or any permission, and no browser or
+// device details are stored with a report. Only two opaque ids are kept, because
+// the hourly limits above need them: a random id and a one-way hash.
 
 import { prepareFirebase, firebaseConfigured } from "./firebase";
-import { deviceSnapshot, getDeviceId, getFingerprint } from "./device";
+import { getDeviceId, getFingerprint } from "./device";
 import { notifyNewReport } from "./worker";
 
 export interface ReportInput {
@@ -94,7 +98,6 @@ export async function submitReport(input: ReportInput): Promise<void> {
   );
 
   const reportRef = fs.doc(fs.collection(db, "reports"));
-  const snapshot = deviceSnapshot();
 
   const attempt = async (flip: boolean) => {
     const batch = fs.writeBatch(db);
@@ -107,7 +110,6 @@ export async function submitReport(input: ReportInput): Promise<void> {
       createdAt: fs.serverTimestamp(),
       deviceId,
       fingerprint,
-      ...snapshot,
       status: "pending",
       source: "contact-form",
     });
@@ -145,7 +147,7 @@ export async function submitReport(input: ReportInput): Promise<void> {
       phone: input.phone.trim(),
       service: input.service,
       message: input.message.trim(),
-      page: snapshot.page,
+      page: location.pathname.slice(0, 200),
     });
 
   try {

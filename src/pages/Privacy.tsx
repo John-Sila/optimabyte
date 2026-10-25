@@ -25,10 +25,10 @@ const sections: LegalSection[] = [
           date and time of the request.
         </p>
         <p>
-          <strong>To protect the form from abuse</strong>, we store a few technical details with each request:
-          a random device identifier kept in your browser, a one-way hash of some browser traits, your browser
-          type (user agent), language, time zone, screen size, and the page and website you came from. We use
-          these to limit each email and device to 3 requests per hour and to spot spam.
+          <strong>To protect the form from abuse</strong>, your browser keeps a random identifier and a one-way
+          hash of a few browser traits, which we use only to limit each email and device to 3 requests per hour
+          and to spot spam. We do not ask for your location, and we do not store your browser type, language,
+          time zone, screen size or the page you came from with your request.
         </p>
         <p>
           <strong>When you use WhatsApp, email or phone</strong> to contact us, we receive whatever you send us

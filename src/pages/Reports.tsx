@@ -218,14 +218,13 @@ function csvCell(v: string): string {
 }
 
 function downloadCsv(rows: Report[]) {
-  const head = ["Date", "Name", "Email", "Phone", "Service", "Status", "Message", "Language", "Timezone", "Screen", "Page", "Referrer"];
+  const head = ["Date", "Name", "Email", "Phone", "Service", "Status", "Message"];
   const lines = [head.map(csvCell).join(",")];
   for (const r of rows) {
     lines.push(
       [
         format(r.createdAt, "yyyy-MM-dd HH:mm"),
         r.name, r.email, r.phone, r.service, statusMeta(r.status).label, r.message,
-        r.language, r.timezone, r.screen, r.page, r.referrer,
       ]
         .map(csvCell)
         .join(","),
@@ -246,7 +245,6 @@ const selectClass =
   "h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 function ReportCard({ report, onDelete }: { report: Report; onDelete: (r: Report) => void }) {
-  const [open, setOpen] = useState(false);
   const wa = whatsappTarget(report.phone);
   const meta = statusMeta(report.status);
 
@@ -327,10 +325,6 @@ function ReportCard({ report, onDelete }: { report: Report; onDelete: (r: Report
             </button>
           ))}
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-          Device details
-          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-        </Button>
         <Button
           size="sm"
           variant="ghost"
@@ -342,25 +336,6 @@ function ReportCard({ report, onDelete }: { report: Report; onDelete: (r: Report
         </Button>
       </div>
 
-      {open && (
-        <dl className="mt-4 animate-fade-up grid gap-x-6 gap-y-2 rounded-xl bg-secondary/50 p-4 text-xs sm:grid-cols-2">
-          {[
-            ["Device ID", report.deviceId],
-            ["Fingerprint", report.fingerprint.slice(0, 16) + "..."],
-            ["Browser", report.userAgent],
-            ["Language", report.language],
-            ["Time zone", report.timezone],
-            ["Screen", report.screen],
-            ["Sent from page", report.page],
-            ["Came from", report.referrer || "Direct"],
-          ].map(([k, v]) => (
-            <div key={k} className="min-w-0">
-              <dt className="font-semibold text-foreground">{k}</dt>
-              <dd className="break-all text-muted-foreground">{v || "Unknown"}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
     </article>
   );
 }

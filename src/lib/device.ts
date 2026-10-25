@@ -67,18 +67,6 @@ export async function getFingerprint(): Promise<string> {
   return sha256Hex(parts.join("|"));
 }
 
-export function deviceSnapshot() {
-  const nav = navigator as Navigator & { deviceMemory?: number };
-  return {
-    userAgent: nav.userAgent.slice(0, 300),
-    language: (nav.language || "").slice(0, 20),
-    timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || "").slice(0, 60),
-    screen: `${screen.width}x${screen.height}`,
-    referrer: (document.referrer || "").slice(0, 300),
-    page: location.pathname.slice(0, 200),
-  };
-}
-
 /** Friendly browser / OS / device-type names from the user agent string. */
 export function describeDevice(ua: string = navigator.userAgent) {
   const browser =

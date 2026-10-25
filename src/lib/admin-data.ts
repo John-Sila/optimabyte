@@ -22,6 +22,9 @@ import { getFirebaseApp, prepareFirebase } from "./firebase";
 import type { ReportStatus } from "./reports";
 import { deviceDetails } from "./device";
 import { fetchNetworkInfo, type NetworkInfo } from "./worker";
+import type { GeoFix } from "./geo";
+
+export type { GeoFix };
 
 export interface Report {
   id: string;
@@ -32,14 +35,6 @@ export interface Report {
   message: string;
   status: ReportStatus;
   createdAt: Date;
-  deviceId: string;
-  fingerprint: string;
-  userAgent: string;
-  language: string;
-  timezone: string;
-  screen: string;
-  referrer: string;
-  page: string;
   source: string;
 }
 
@@ -88,14 +83,6 @@ export function subscribeReports(
             status: normalizeStatus(x.status),
             // Pending server timestamps are null for a moment on fresh writes.
             createdAt: toDate(x.createdAt),
-            deviceId: x.deviceId ?? "",
-            fingerprint: x.fingerprint ?? "",
-            userAgent: x.userAgent ?? "",
-            language: x.language ?? "",
-            timezone: x.timezone ?? "",
-            screen: x.screen ?? "",
-            referrer: x.referrer ?? "",
-            page: x.page ?? "",
             source: x.source ?? "",
           } satisfies Report;
         }),
@@ -134,12 +121,6 @@ export async function setPortfolioImage(projectId: string, url: string | null) {
 
 export const LOGIN_LOG_KEEP = 5;
 
-export interface GeoFix {
-  latitude: number;
-  longitude: number;
-  accuracyM: number;
-}
-
 export interface LoginRecord {
   id: string;
   at: Date;
@@ -150,36 +131,20 @@ export interface LoginRecord {
   geoStatus: string;
 }
 
-function getPreciseLocation(): Promise<{ geo: GeoFix | null; status: string }> {
-  return new Promise((resolve) => {
-    if (!("geolocation" in navigator)) return resolve({ geo: null, status: "unavailable" });
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        resolve({
-          geo: {
-            latitude: Number(pos.coords.latitude.toFixed(6)),
-            longitude: Number(pos.coords.longitude.toFixed(6)),
-            accuracyM: Math.round(pos.coords.accuracy),
-          },
-          status: "granted",
-        }),
-      (err) => resolve({ geo: null, status: err.code === 1 ? "denied" : "unavailable" }),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-    );
-  });
-}
-
-/** Call right after a successful admin sign-in. Never throws. */
-export async function recordAdminLogin(): Promise<void> {
+/**
+ * Call right after a successful admin sign-in. Never throws. `geo` is the precise
+ * position the browser gave before the sign-in dialog opened.
+ */
+export async function recordAdminLogin(geo: GeoFix | null): Promise<void> {
   try {
-    const [network, loc] = await Promise.all([fetchNetworkInfo(), getPreciseLocation()]);
+    const network = await fetchNetworkInfo();
     const database = await dbReady();
     await addDoc(collection(database, "adminLogins"), {
       at: serverTimestamp(),
       device: deviceDetails(),
       network,
-      geo: loc.geo,
-      geoStatus: loc.status,
+      geo,
+      geoStatus: geo ? "granted" : "unavailable",
     });
     // Keep only the newest LOGIN_LOG_KEEP entries.
     const snap = await getDocs(query(collection(database, "adminLogins"), orderBy("at", "desc"), limit(50)));
