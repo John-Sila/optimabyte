@@ -24,7 +24,7 @@ function friendlyError(err: unknown): string {
 }
 
 export default function AdminLoginDialog() {
-  const { loginOpen, closeLogin, login } = useAuth();
+  const { loginOpen, closeLogin, login, locating, cancelLocating } = useAuth();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,6 +55,24 @@ export default function AdminLoginDialog() {
   };
 
   return (
+    <>
+    <Dialog open={locating} onOpenChange={(open) => !open && cancelLocating()}>
+      <DialogContent className="sm:max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="items-center text-center sm:text-center">
+          <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+            <Loader2 className="h-7 w-7 animate-spin text-gold-text" aria-hidden="true" />
+          </div>
+          <DialogTitle className="text-xl">Authenticating session</DialogTitle>
+          <DialogDescription role="status" aria-live="polite">
+            Checking your device location before sign-in. If your browser asks for permission, choose Allow.
+          </DialogDescription>
+        </DialogHeader>
+        <Button type="button" variant="ghost" className="w-full" onClick={cancelLocating}>
+          Cancel
+        </Button>
+      </DialogContent>
+    </Dialog>
+
     <Dialog open={loginOpen} onOpenChange={(open) => !open && closeLogin()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader className="items-center text-center sm:text-center">
@@ -123,5 +141,6 @@ export default function AdminLoginDialog() {
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

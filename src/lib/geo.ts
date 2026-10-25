@@ -13,12 +13,8 @@ export interface GeoResult {
   reason: "denied" | "unavailable" | null;
 }
 
-/** Asks the browser for the precise position. Shows the browser's permission prompt. */
-export function requestPreciseLocation(): Promise<GeoResult> {
+function readPosition(highAccuracy: boolean, timeout: number): Promise<GeoResult> {
   return new Promise((resolve) => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      return resolve({ geo: null, reason: "unavailable" });
-    }
     navigator.geolocation.getCurrentPosition(
       (pos) =>
         resolve({
@@ -30,9 +26,23 @@ export function requestPreciseLocation(): Promise<GeoResult> {
           reason: null,
         }),
       (err) => resolve({ geo: null, reason: err.code === 1 ? "denied" : "unavailable" }),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      { enableHighAccuracy: highAccuracy, timeout, maximumAge: 0 },
     );
   });
+}
+
+/**
+ * Asks the browser for the position (this is what shows the permission prompt).
+ * Tries a precise GPS fix first; if the device is slow to get one, falls back to
+ * a quicker, less exact fix instead of leaving the person waiting.
+ */
+export async function requestPreciseLocation(): Promise<GeoResult> {
+  if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+    return { geo: null, reason: "unavailable" };
+  }
+  const precise = await readPosition(true, 8000);
+  if (precise.geo || precise.reason === "denied") return precise;
+  return readPosition(false, 8000);
 }
 
 // The fix obtained before the dialog opened, handed to the login log after sign-in.

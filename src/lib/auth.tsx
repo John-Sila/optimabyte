@@ -20,6 +20,9 @@ interface AuthContextValue {
   /** False only while we are restoring a saved admin session. */
   ready: boolean;
   loginOpen: boolean;
+  /** True while we wait for the browser's location answer, before the dialog opens. */
+  locating: boolean;
+  cancelLocating: () => void;
   openLogin: () => void | Promise<void>;
   closeLogin: () => void;
   login: (password: string) => Promise<void>;
@@ -136,16 +139,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // The sign-in dialog only opens once the browser has given the precise
   // location. If the person blocks it, the dialog does not show.
-  const locating = useRef(false);
+  const [locating, setLocating] = useState(false);
+  const locatingRef = useRef(false);
+  const attempt = useRef(0);
+
+  const cancelLocating = useCallback(() => {
+    attempt.current += 1; // any answer from the browser is now ignored
+    locatingRef.current = false;
+    setLocating(false);
+    holdGeo(null);
+  }, []);
+
   const openLogin = useCallback(async () => {
-    if (locating.current) return;
+    if (locatingRef.current) return;
     if (!firebaseConfigured) {
       setLoginOpen(true); // the dialog explains that sign-in is not set up yet
       return;
     }
-    locating.current = true;
+    locatingRef.current = true;
+    const mine = ++attempt.current;
+    setLocating(true); // shows the "Checking your device" popup straight away
     try {
       const res = await requestPreciseLocation();
+      if (attempt.current !== mine) return; // cancelled while waiting
       if (res.geo) {
         holdGeo(res.geo);
         setLoginOpen(true);
@@ -158,7 +174,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
     } finally {
-      locating.current = false;
+      if (attempt.current === mine) {
+        locatingRef.current = false;
+        setLocating(false);
+      }
     }
   }, []);
 
@@ -227,12 +246,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       admin,
       ready,
       loginOpen,
+      locating,
+      cancelLocating,
       openLogin,
       closeLogin: () => setLoginOpen(false),
       login,
       logout,
     }),
-    [admin, ready, loginOpen, openLogin, login, logout],
+    [admin, ready, loginOpen, locating, cancelLocating, openLogin, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
