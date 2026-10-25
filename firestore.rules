@@ -1,0 +1,129 @@
+rules_version = '2';
+
+// OptimaByte Firestore rules.
+//
+//   content/{doc}   public read, admin write   (editable site content, e.g. portfolio images)
+//   reports/{id}    public create (validated + rate limited), admin read/update/delete
+//   adminLogins/{id} admin only: the latest 5 admin sign-ins (device + location)
+//   limits/{key}    rate-limit counters: public get/create/update (validated), admin list/delete
+//
+// The admin is the single Firebase Auth user admin@optimabyte.com.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'admin@optimabyte.com';
+    }
+
+    function shortStr(v, maxLen) {
+      return v is string && v.size() <= maxLen;
+    }
+
+    // ---------------------------------------------------------------- content
+    match /content/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------- reports
+    function validReport(id) {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+          'name', 'email', 'phone', 'service', 'message', 'createdAt', 'deviceId',
+          'fingerprint', 'userAgent', 'language', 'timezone', 'screen', 'referrer',
+          'page', 'status', 'source'
+        ])
+        && d.keys().hasAll([
+          'name', 'email', 'phone', 'service', 'message', 'createdAt', 'deviceId',
+          'fingerprint', 'status', 'source'
+        ])
+        && d.name is string && d.name.size() >= 2 && d.name.size() <= 80
+        && d.email is string && d.email.size() <= 120
+        && d.email.matches('^[^@\\s/|]+@[^@\\s/|]+\\.[^@\\s/|]+$')
+        && shortStr(d.phone, 30)
+        && d['service'] is string && d['service'].size() >= 2 && d['service'].size() <= 80
+        && d.message is string && d.message.size() >= 10 && d.message.size() <= 2000
+        && d.createdAt == request.time
+        && d.deviceId is string && d.deviceId.size() >= 16 && d.deviceId.size() <= 64
+        && d.fingerprint is string && d.fingerprint.size() >= 16 && d.fingerprint.size() <= 64
+        && (!('userAgent' in d) || shortStr(d.userAgent, 300))
+        && (!('language' in d) || shortStr(d.language, 20))
+        && (!('timezone' in d) || shortStr(d.timezone, 60))
+        && (!('screen' in d) || shortStr(d.screen, 20))
+        && (!('referrer' in d) || shortStr(d.referrer, 300))
+        && (!('page' in d) || shortStr(d.page, 200))
+        && d.status == 'pending'
+        && d.source == 'contact-form'
+        // The same batch must also bump all three counters for THIS report.
+        && getAfter(/databases/$(database)/documents/limits/$('e_' + d.email.lower())).data.lastReportId == id
+        && getAfter(/databases/$(database)/documents/limits/$('d_' + d.deviceId)).data.lastReportId == id
+        && getAfter(/databases/$(database)/documents/limits/$('f_' + d.fingerprint)).data.lastReportId == id;
+    }
+
+    match /reports/{reportId} {
+      allow create: if validReport(reportId);
+      allow read, delete: if isAdmin();
+      // Admins may change the status only.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['pending', 'in_progress', 'completed'];
+    }
+
+    // ------------------------------------------------------------ adminLogins
+    match /adminLogins/{id} {
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.at == request.time;
+      allow update: if false;
+    }
+
+    // ----------------------------------------------------------------- limits
+    // Counter keys: e_<email>, d_<device id>, f_<fingerprint>. Each counter allows
+    // 3 writes per rolling hour (12 for the shared fingerprint) and can only be
+    // written together with a real report that matches the key.
+    function limitShapeOk(key) {
+      let d = request.resource.data;
+      let isE = key.matches('e_.*');
+      let isD = key.matches('d_.*');
+      let isF = key.matches('f_.*');
+      let cap = isF ? 12 : 3;
+      return d.keys().hasOnly(['count', 'windowStart', 'lastReportId'])
+        && d.count is int && d.count >= 1 && d.count <= cap
+        && d.windowStart is timestamp
+        && d.lastReportId is string
+        && existsAfter(/databases/$(database)/documents/reports/$(d.lastReportId))
+        && (
+          isE
+            ? key == 'e_' + getAfter(/databases/$(database)/documents/reports/$(d.lastReportId)).data.email.lower()
+            : isD
+              ? key == 'd_' + getAfter(/databases/$(database)/documents/reports/$(d.lastReportId)).data.deviceId
+              : isF
+                ? key == 'f_' + getAfter(/databases/$(database)/documents/reports/$(d.lastReportId)).data.fingerprint
+                : false
+        );
+    }
+
+    match /limits/{key} {
+      // Visitors may read only their own counter by exact id (needed to show a
+      // friendly "limit reached" message). It holds no personal data.
+      allow get: if true;
+      allow list, delete: if isAdmin();
+
+      allow create: if limitShapeOk(key)
+        && request.resource.data.count == 1
+        && request.resource.data.windowStart == request.time;
+
+      allow update: if limitShapeOk(key)
+        && (
+          resource.data.windowStart + duration.value(1, 'h') <= request.time
+            // Window over: restart at 1.
+            ? (request.resource.data.count == 1
+                && request.resource.data.windowStart == request.time)
+            // Window open: exactly one more, same window start.
+            : (request.resource.data.count == resource.data.count + 1
+                && request.resource.data.windowStart == resource.data.windowStart)
+        );
+    }
+  }
+}

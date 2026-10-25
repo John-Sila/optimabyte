@@ -2,37 +2,20 @@ import { pricing } from "@/lib/site-config";
 
 export default function PricingTable() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
-      <table className="w-full text-left">
-        <thead className="bg-secondary">
-          <tr>
-            <th className="px-6 py-4 text-sm font-semibold text-foreground">Service</th>
-            <th className="px-6 py-4 text-sm font-semibold text-foreground">Fee</th>
-            <th className="px-6 py-4 text-sm font-semibold text-foreground hidden md:table-cell">
-              Covers
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {pricing.map((item, index) => (
-            <tr
-              key={item.title}
-              className={index !== pricing.length - 1 ? "border-b border-border" : ""}
-            >
-              <td className="px-6 py-5 align-top">
-                <p className="font-semibold text-foreground">{item.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">{item.cadence}</p>
-              </td>
-              <td className="px-6 py-5 align-top">
-                <p className="font-semibold text-primary whitespace-nowrap">{item.price}</p>
-              </td>
-              <td className="px-6 py-5 align-top text-sm text-muted-foreground hidden md:table-cell">
-                {item.description}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid gap-5 md:grid-cols-3 xl:grid-cols-1">
+      {pricing.map((item) => (
+        <div
+          key={item.title}
+          className="card-lift grid gap-4 rounded-2xl border border-border bg-card p-6 md:p-8 xl:grid-cols-[1.1fr_auto_1.4fr] xl:items-center xl:gap-10"
+        >
+          <div>
+            <p className="text-lg font-bold text-foreground">{item.title}</p>
+            <p className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">{item.cadence}</p>
+          </div>
+          <p className="text-2xl font-extrabold text-gold-text xl:text-3xl">{item.price}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+        </div>
+      ))}
     </div>
   );
 }

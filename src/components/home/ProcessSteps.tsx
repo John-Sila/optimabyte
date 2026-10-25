@@ -1,3 +1,5 @@
+import Reveal from "@/components/Reveal";
+
 const steps = [
   {
     number: "01",
@@ -27,20 +29,24 @@ const steps = [
 
 export default function ProcessSteps() {
   return (
-    <section className="py-20 md:py-24 border-t border-border bg-secondary/30">
-      <div className="max-w-7xl mx-auto px-6">
-        <h2 className="text-3xl font-semibold tracking-tight text-foreground mb-12">
-          How a project runs
-        </h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {steps.map((step) => (
-            <div key={step.number}>
-              <span className="text-sm font-semibold text-primary">{step.number}</span>
-              <h3 className="mt-2 text-lg font-semibold text-foreground">{step.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                {step.description}
-              </p>
-            </div>
+    <section className="border-t border-border bg-secondary/40 py-20 md:py-28">
+      <div className="site-container">
+        <Reveal>
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-gold-text">Process</p>
+          <h2 className="mb-14 text-3xl font-bold tracking-tight text-foreground md:text-4xl">How a project runs</h2>
+        </Reveal>
+        <div className="relative grid gap-10 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="pointer-events-none absolute left-0 right-0 top-6 hidden h-px bg-gradient-to-r from-gold-text/60 via-border to-brandblue/60 xl:block" />
+          {steps.map((step, i) => (
+            <Reveal key={step.number} delay={i * 110}>
+              <div className="relative">
+                <span className="relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-gold-text bg-background text-sm font-bold text-gold-text">
+                  {step.number}
+                </span>
+                <h3 className="mt-5 text-lg font-bold text-foreground">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>

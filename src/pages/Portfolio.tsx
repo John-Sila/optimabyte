@@ -3,34 +3,38 @@ import PageShell from "@/components/layout/PageShell";
 import PageHeader from "@/components/layout/PageHeader";
 import PortfolioItem from "@/components/PortfolioItem";
 import CTASection from "@/components/home/CTASection";
+import Reveal from "@/components/Reveal";
 import { portfolio } from "@/lib/site-config";
+import { usePortfolioImages } from "@/lib/content";
 
 const filters = ["All", "Software", "Mobile", "Web", "Design"] as const;
 
 export default function Portfolio() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
+  const { images, applyLocal } = usePortfolioImages();
 
-  const filtered =
-    filter === "All" ? portfolio : portfolio.filter((p) => p.category === filter);
+  const filtered = filter === "All" ? portfolio : portfolio.filter((p) => p.category === filter);
 
   return (
     <PageShell>
       <PageHeader
         eyebrow="Portfolio"
-        title="Work we have built"
-        description="A selection of projects across software, mobile and web. More case studies are added as projects are completed and cleared for release."
+        title="Systems we build and deliver"
+        description="Fleet and rider apps, point of sale, hospital and school ERP, websites and print design. Here is what each one does."
       />
 
-      <section className="py-16 md:py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-wrap gap-2 mb-10">
+      <section className="py-14 md:py-20">
+        <div className="site-container">
+          <div className="mb-10 flex flex-wrap gap-2" role="tablist" aria-label="Filter projects">
             {filters.map((f) => (
               <button
                 key={f}
+                role="tab"
+                aria-selected={filter === f}
                 onClick={() => setFilter(f)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-full px-5 py-2 text-sm font-medium transition-all ${
                   filter === f
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-md"
                     : "bg-secondary text-foreground hover:bg-secondary/70"
                 }`}
               >
@@ -39,16 +43,18 @@ export default function Portfolio() {
             ))}
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((project) => (
-              <PortfolioItem key={project.id} project={project} />
+          <div key={filter} className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {filtered.map((project, i) => (
+              <Reveal key={project.id} delay={i * 70} className="[&>*]:h-full">
+                <PortfolioItem project={project} imageUrl={images[project.id]} onImageSaved={applyLocal} />
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       <CTASection
-        title="Want to see something similar for your business"
+        title="Want something like this for your business"
         description="Tell us what you have in mind and we will scope it with you."
       />
     </PageShell>

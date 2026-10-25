@@ -8,10 +8,11 @@ export default function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Message us on WhatsApp"
-      className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg hover:opacity-90 transition-opacity"
+      className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
     >
+      <span className="absolute inset-0 -z-10 animate-pulse-ring rounded-full bg-primary/40" aria-hidden="true" />
       <MessageCircle className="h-5 w-5" />
-      <span className="hidden sm:inline text-sm font-medium">WhatsApp</span>
+      <span className="hidden text-sm font-medium sm:inline">WhatsApp</span>
     </a>
   );
 }

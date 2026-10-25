@@ -1,4 +1,5 @@
 import { ShieldCheck, Clock, Wallet, MessageCircle } from "lucide-react";
+import Reveal from "@/components/Reveal";
 
 const points = [
   {
@@ -25,20 +26,23 @@ const points = [
 
 export default function WhyUs() {
   return (
-    <section className="py-20 md:py-24 border-t border-border">
-      <div className="max-w-7xl mx-auto px-6">
-        <h2 className="text-3xl font-semibold tracking-tight text-foreground mb-12">
-          Why work with us
-        </h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {points.map((point) => (
-            <div key={point.title}>
-              <point.icon className="h-6 w-6 text-primary" />
-              <h3 className="mt-4 text-base font-semibold text-foreground">{point.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                {point.description}
-              </p>
-            </div>
+    <section className="border-t border-border py-20 md:py-28">
+      <div className="site-container">
+        <Reveal>
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-gold-text">Why OptimaByte</p>
+          <h2 className="mb-12 text-3xl font-bold tracking-tight text-foreground md:text-4xl">Why work with us</h2>
+        </Reveal>
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {points.map((point, i) => (
+            <Reveal key={point.title} delay={i * 80} className="[&>*]:h-full">
+              <div className="card-lift h-full rounded-2xl border border-border bg-card p-6">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brandblue/10">
+                  <point.icon className="h-6 w-6 text-brandblue-dark dark:text-brandblue" />
+                </span>
+                <h3 className="mt-5 text-base font-bold text-foreground">{point.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{point.description}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>
