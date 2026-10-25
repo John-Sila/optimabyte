@@ -22,6 +22,7 @@ export const siteConfig = {
   },
 
   founded: "2020",
+  version: "4.9.11",
 };
 
 export function whatsappLink(message?: string): string {
