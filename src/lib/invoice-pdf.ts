@@ -293,13 +293,58 @@ export async function buildInvoicePdf(
     const lines = doc.splitTextToSize(body, PAGE_W - MARGIN * 2) as string[];
     const needed = 6 + lines.length * 4.2 + 4;
     if (y + needed > FOOTER_Y - 6) newPage();
-    text(title, MARGIN, y, { size: 8, bold: true, color: GOLD });
-    y += 5;
+    if (title) {
+      text(title, MARGIN, y, { size: 8, bold: true, color: GOLD });
+      y += 5;
+    }
     text(lines.join("\n"), MARGIN, y, { size: 9, color: INK });
     y += lines.length * 4.2 + 5;
   };
 
-  block("HOW TO PAY", invoice.paymentDetails);
+  // "How to pay": lines written as  METHOD | DETAIL | NUMBER  become a styled table.
+  // Any line without a "|" is printed as plain text under it.
+  const payRows = invoice.paymentDetails
+    .split("\n")
+    .filter((l) => l.includes("|"))
+    .map((l) => l.split("|").map((c) => c.trim()))
+    .slice(0, 8);
+  const payPlain = invoice.paymentDetails
+    .split("\n")
+    .filter((l) => l.trim() && !l.includes("|"))
+    .join("\n");
+
+  if (payRows.length) {
+    const ROW_H = 9;
+    const need = 6 + payRows.length * ROW_H + 6;
+    if (y + need > FOOTER_Y - 6) newPage();
+    text("HOW TO PAY", MARGIN, y, { size: 8, bold: true, color: GOLD });
+    y += 3.5;
+    const W = PAGE_W - MARGIN * 2;
+    const cols = [W * 0.2, W * 0.45, W * 0.35]; // method | detail | number
+    const x0 = MARGIN;
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.3);
+    payRows.forEach((cells, i) => {
+      const top = y + i * ROW_H;
+      let x = x0;
+      cols.forEach((w, c) => {
+        if (c === 0) {
+          doc.setFillColor(...NAVY);
+          doc.rect(x, top, w, ROW_H, "FD");
+        } else {
+          doc.setFillColor(...(c === 2 ? SOFT : ([255, 255, 255] as [number, number, number])));
+          doc.rect(x, top, w, ROW_H, "FD");
+        }
+        const value = cells[c] ?? "";
+        if (c === 0) text(value, x + 4, top + 5.8, { size: 9, bold: true, color: [255, 255, 255] });
+        else if (c === 1) text(value, x + 4, top + 5.8, { size: 9.5 });
+        else text(value, x + 4, top + 5.8, { size: 10.5, bold: true, color: NAVY });
+        x += w;
+      });
+    });
+    y += payRows.length * ROW_H + 6;
+  }
+  block(payRows.length ? "" : "HOW TO PAY", payRows.length ? payPlain : invoice.paymentDetails);
   block("NOTES", invoice.notes);
   block("TERMS", invoice.terms);
 
