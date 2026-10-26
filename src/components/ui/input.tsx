@@ -15,6 +15,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         ref={ref}
         {...props}
+        onWheel={(e) => {
+          if (type === "number") e.currentTarget.blur(); // stops the mouse wheel from changing the value
+          props.onWheel?.(e);
+        }}
       />
     )
   }
