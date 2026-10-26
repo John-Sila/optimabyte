@@ -171,7 +171,7 @@ service cloud.firestore {
       let d = request.resource.data;
       return d.keys().hasOnly([
           'businessName', 'address', 'email', 'phone', 'kraPin', 'prefix', 'nextNumber',
-          'dueDays', 'vatRate', 'paymentDetails', 'terms', 'footer'
+          'dueDays', 'vatRate', 'paymentDetails', 'notes', 'terms', 'footer'
         ])
         && optStr(d, 'businessName', 120)
         && optStr(d, 'address', 160)
@@ -183,6 +183,7 @@ service cloud.firestore {
         && (!('dueDays' in d) || (d.dueDays is number && d.dueDays >= 0 && d.dueDays <= 365))
         && (!('vatRate' in d) || (d.vatRate is number && d.vatRate >= 0 && d.vatRate <= 100))
         && optStr(d, 'paymentDetails', 2000)
+        && optStr(d, 'notes', 2000)
         && optStr(d, 'terms', 3000)
         && optStr(d, 'footer', 200);
     }

@@ -79,6 +79,8 @@ export interface InvoiceSettings {
   /** Default VAT percentage for new invoices; 0 turns VAT off by default. */
   vatRate: number;
   paymentDetails: string;
+  /** Default text for the Notes box of every new invoice. */
+  notes: string;
   terms: string;
   footer: string;
 }
@@ -93,7 +95,10 @@ export const DEFAULT_SETTINGS: InvoiceSettings = {
   nextNumber: 1,
   dueDays: 14,
   vatRate: 0,
-  paymentDetails: "M-Pesa: add your Paybill or Till number here\nBank: add your bank, account name and number here",
+  // One row per line, written as  METHOD | DETAIL | NUMBER
+  paymentDetails: "MPESA | SEND MONEY | 0717405109\nBANK | DIAMOND TRUST BANK | SDA448SA4",
+  notes:
+    "This invoice is based upon the agreed terms between you and OptimaByte Softwares Inc. You reserve the right to request a change to information contained herein.",
   terms: "Payment is due by the due date shown. Please quote the invoice number when paying.",
   footer: "Thank you for your business.",
 };

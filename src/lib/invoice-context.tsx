@@ -31,25 +31,30 @@ export function InvoiceDataProvider({ children }: { children: ReactNode }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [settings, setSettings] = useState<InvoiceSettings>(DEFAULT_SETTINGS);
-  const [ready, setReady] = useState(false);
+  const [invoicesLoaded, setInvoicesLoaded] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const fail = (e: Error) => {
       setError(
         /permission|insufficient/i.test(e.message)
-          ? "Firestore refused the request. Publish the invoice rules from firestore.rules.invoices.txt."
+          ? "Firestore refused the request. Publish the updated firestore.rules."
           : e.message || "Could not load invoices",
       );
-      setReady(true);
+      setInvoicesLoaded(true);
+      setSettingsLoaded(true);
     };
     const offInvoices = subscribeInvoices((rows) => {
       setInvoices(rows);
       setError("");
-      setReady(true);
+      setInvoicesLoaded(true);
     }, fail);
     const offClients = subscribeClients(setClients, fail);
-    const offSettings = subscribeSettings(setSettings, fail);
+    const offSettings = subscribeSettings((st) => {
+      setSettings(st);
+      setSettingsLoaded(true);
+    }, fail);
     return () => {
       offInvoices();
       offClients();
@@ -75,6 +80,9 @@ export function InvoiceDataProvider({ children }: { children: ReactNode }) {
     }
     return { outstanding, overdueAmount, overdueCount, openCount };
   }, [invoices]);
+
+  // Ready only once BOTH have arrived, so forms never fill themselves from the built-in defaults.
+  const ready = invoicesLoaded && settingsLoaded;
 
   const value = useMemo(
     () => ({ invoices, clients, settings, ready, error, stats }),

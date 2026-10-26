@@ -75,8 +75,9 @@ export default function SettingsSection() {
         <section className={cardClass}>
           <h2 className="mb-4 text-base font-semibold">Default wording</h2>
           <div className="grid gap-4">
-            <Field label="How to pay" htmlFor="st-pay" hint="Shown on every invoice. Put your M-Pesa Paybill or Till and bank details here."><Textarea id="st-pay" rows={4} value={form.paymentDetails} onChange={(e) => set("paymentDetails", e.target.value)} /></Field>
-            <Field label="Terms" htmlFor="st-terms"><Textarea id="st-terms" rows={3} value={form.terms} onChange={(e) => set("terms", e.target.value)} /></Field>
+            <Field label="How to pay" htmlFor="st-pay" hint="One row per line, written as METHOD | DETAIL | NUMBER. Lines without | are shown as plain text."><Textarea id="st-pay" maxLength={2000} rows={4} value={form.paymentDetails} onChange={(e) => set("paymentDetails", e.target.value)} /></Field>
+            <Field label="Notes" htmlFor="st-notes" hint="Fills the Notes box on every new invoice. You can still change it per invoice."><Textarea id="st-notes" maxLength={2000} rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
+            <Field label="Terms" htmlFor="st-terms"><Textarea id="st-terms" maxLength={3000} rows={3} value={form.terms} onChange={(e) => set("terms", e.target.value)} /></Field>
             <Field label="Footer line" htmlFor="st-footer"><Input id="st-footer" value={form.footer} maxLength={120} onChange={(e) => set("footer", e.target.value)} /></Field>
           </div>
         </section>

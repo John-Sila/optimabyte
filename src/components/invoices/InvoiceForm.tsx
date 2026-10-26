@@ -73,6 +73,7 @@ export default function InvoiceForm() {
     setVatOn(settings.vatRate > 0);
     setTerms(settings.terms);
     setPaymentDetails(settings.paymentDetails);
+    setNotes(settings.notes);
   };
   useEffect(() => {
     if (ready && !seeded.current) {

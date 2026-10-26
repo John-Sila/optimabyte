@@ -63,6 +63,7 @@ function mergeSettings(raw: Record<string, unknown> | undefined): InvoiceSetting
     dueDays: typeof r.dueDays === "number" ? r.dueDays : d.dueDays,
     vatRate: typeof r.vatRate === "number" ? r.vatRate : d.vatRate,
     paymentDetails: typeof r.paymentDetails === "string" ? r.paymentDetails : d.paymentDetails,
+    notes: typeof r.notes === "string" ? r.notes : d.notes,
     terms: typeof r.terms === "string" ? r.terms : d.terms,
     footer: typeof r.footer === "string" ? r.footer : d.footer,
   };
