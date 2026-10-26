@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ClipboardList, Menu, X, MessageCircle, ShieldCheck } from "lucide-react";
+import { ClipboardList, FileText, Menu, X, MessageCircle, ShieldCheck } from "lucide-react";
 import Logo from "./Logo";
 import ThemeToggle from "./ThemeToggle";
 import AdminMenu from "@/components/admin/AdminMenu";
@@ -27,7 +27,7 @@ export default function Navbar() {
   }, []);
 
   const items = admin
-    ? [...navItems, { label: "Reports", href: "/admin/reports" }]
+    ? [...navItems, { label: "Reports", href: "/admin/reports" }, { label: "Invoices", href: "/admin/invoices" }]
     : navItems;
 
   return (
@@ -108,6 +108,7 @@ export default function Navbar() {
                 }`}
               >
                 {item.href === "/admin/reports" && <ClipboardList className="h-4 w-4" />}
+                {item.href === "/admin/invoices" && <FileText className="h-4 w-4" />}
                 {item.label}
               </Link>
             ))}

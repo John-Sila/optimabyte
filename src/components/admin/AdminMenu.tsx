@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ClipboardList, Lock, LogOut, ShieldCheck } from "lucide-react";
+import { ClipboardList, FileText, Lock, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -50,6 +50,12 @@ export default function AdminMenu({ compact = false }: { compact?: boolean }) {
           <Link to="/admin/reports" className="cursor-pointer">
             <ClipboardList className="mr-2 h-4 w-4" />
             Reports
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/admin/invoices" className="cursor-pointer">
+            <FileText className="mr-2 h-4 w-4" />
+            Invoices
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
