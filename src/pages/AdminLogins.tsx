@@ -148,7 +148,7 @@ function LoginsInner() {
           ) : (
             <>
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Globe className="h-4 w-4" /> If you see a sign-in you do not recognise, change the admin password in Firebase straight away.
+                <Globe className="h-4 w-4" /> If you see a sign-in you do not recognise, change the admin password straight away.
               </p>
               <div className="grid gap-4 xl:grid-cols-2">
                 {rows.map((r, i) => (

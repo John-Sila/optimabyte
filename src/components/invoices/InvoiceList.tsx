@@ -64,13 +64,46 @@ type SortKey = (typeof SORTS)[number]["value"];
 
 const dateLabel = (iso: string) => (iso ? format(parseISODate(iso), "d MMM yyyy") : "-");
 
-function SummaryCard({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: "bad" | "good" }) {
+/** "KES" small, whole part large, decimals small and muted. */
+function Amount({ value, size = "text-xl", className = "" }: { value: number; size?: string; className?: string }) {
+  const [whole, cents] = (Number(value) || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).split(".");
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${tone === "bad" ? "text-destructive" : tone === "good" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
-        {value}
-      </p>
+    <p className={`mt-1 flex items-baseline gap-1 font-bold tracking-tight ${size} ${className}`}>
+      <span className="text-xs font-semibold opacity-70">KES</span>
+      <span>{whole}</span>
+      <span className="text-sm font-semibold opacity-60">.{cents}</span>
+    </p>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  note,
+  tone,
+  featured,
+}: {
+  label: string;
+  value: number;
+  note?: string;
+  tone?: "bad" | "good";
+  featured?: boolean;
+}) {
+  const color = featured
+    ? "text-gold-text"
+    : tone === "bad"
+      ? "text-destructive"
+      : tone === "good"
+        ? "text-emerald-600 dark:text-emerald-400"
+        : "text-foreground";
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        featured ? "border-gold/50 bg-gradient-to-br from-gold/20 to-gold/5" : "border-border bg-card"
+      }`}
+    >
+      <p className={`text-xs font-semibold uppercase tracking-wide ${featured ? "text-gold-text" : "text-muted-foreground"}`}>{label}</p>
+      <Amount value={value} size={featured ? "text-2xl" : "text-xl"} className={color} />
       {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
     </div>
   );
@@ -119,6 +152,16 @@ export default function InvoiceList() {
       c[s] = (c[s] ?? 0) + 1;
     }
     return c;
+  }, [invoices]);
+
+  // Money actually received, from recorded payments. Voided invoices are left out.
+  const earnedAllTime = useMemo(() => {
+    let total = 0;
+    for (const inv of invoices) {
+      if (inv.voided) continue;
+      for (const p of inv.payments) total += p.amount;
+    }
+    return Math.round(total * 100) / 100;
   }, [invoices]);
 
   const paidThisMonth = useMemo(() => {
@@ -201,10 +244,10 @@ export default function InvoiceList() {
       />
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Outstanding" value={formatMoney(stats.outstanding)} note={`${stats.openCount} open invoice${stats.openCount === 1 ? "" : "s"}`} />
-        <SummaryCard label="Overdue" value={formatMoney(stats.overdueAmount)} note={`${stats.overdueCount} invoice${stats.overdueCount === 1 ? "" : "s"}`} tone={stats.overdueCount ? "bad" : undefined} />
-        <SummaryCard label="Received this month" value={formatMoney(paidThisMonth)} tone="good" />
-        <SummaryCard label="Invoices on record" value={String(invoices.length)} note={`${counts.paid ?? 0} paid`} />
+        <SummaryCard label="Outstanding" value={stats.outstanding} note={`${stats.openCount} open invoice${stats.openCount === 1 ? "" : "s"}`} />
+        <SummaryCard label="Overdue" value={stats.overdueAmount} note={`${stats.overdueCount} invoice${stats.overdueCount === 1 ? "" : "s"}`} tone={stats.overdueCount ? "bad" : undefined} />
+        <SummaryCard label="Received this month" value={paidThisMonth} tone="good" />
+        <SummaryCard label="Total earned" value={earnedAllTime} note="All payments received, all time" featured />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">

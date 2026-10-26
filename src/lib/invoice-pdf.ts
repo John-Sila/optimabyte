@@ -28,44 +28,55 @@ const FOOTER_Y = PAGE_H - 12;
 const fmtDate = (iso: string) =>
   parseISODate(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-// ------------------------------------------------------------- logo
-// public/logo.svg is fetched in the browser and drawn onto a canvas to get a PNG,
-// because jsPDF cannot embed SVG. If anything fails the PDF simply has no logo.
+// ------------------------------------------------------------- logo and signature
+// Images from public/ are fetched in the browser and drawn onto a canvas to get a PNG,
+// because jsPDF cannot embed SVG (and this keeps PNG transparency). If an image is
+// missing or cannot be read, the PDF simply goes without it.
 
 export const LOGO_URL = "/logo.svg";
+/** Tried in order; the first one that loads is used. Put the file in public/. */
+export const SIGNATURE_URLS = ["/signature.png", "/signature.jpg", "/signature.jpeg"];
 
-interface Logo {
+interface PdfImage {
   dataUrl: string;
   /** width / height */
   ratio: number;
 }
 
-const logoCache = new Map<string, Promise<Logo | null>>();
+const imageCache = new Map<string, Promise<PdfImage | null>>();
 
-function loadLogo(url: string): Promise<Logo | null> {
+/** `maxSide` is the longest side, in pixels, of the PNG that gets embedded. */
+function loadImage(url: string, maxSide: number): Promise<PdfImage | null> {
   if (typeof document === "undefined") return Promise.resolve(null);
-  let p = logoCache.get(url);
+  const key = `${url}@${maxSide}`;
+  let p = imageCache.get(key);
   if (!p) {
     p = (async () => {
       try {
         const res = await fetch(url);
         if (!res.ok) return null;
         const blob = await res.blob();
+        // A missing file on a single-page app often comes back as the HTML page, not an image.
+        if (blob.type && !blob.type.startsWith("image/")) return null;
         const objectUrl = URL.createObjectURL(blob);
         try {
           const img = new Image();
           img.decoding = "async";
           await new Promise<void>((resolve, reject) => {
             img.onload = () => resolve();
-            img.onerror = () => reject(new Error("logo-decode"));
+            img.onerror = () => reject(new Error("image-decode"));
             img.src = objectUrl;
           });
           // SVGs without width/height report 0, so fall back to a square.
-          const nw = img.naturalWidth || 256;
-          const nh = img.naturalHeight || 256;
+          const nw = img.naturalWidth || maxSide;
+          const nh = img.naturalHeight || maxSide;
           const ratio = nw / nh;
-          const h = 256;
-          const w = Math.max(1, Math.round(h * ratio));
+          // Vector images are scaled up to maxSide; photos and PNGs are only ever scaled down.
+          const isSvg = blob.type.includes("svg");
+          const longest = Math.max(nw, nh);
+          const scale = isSvg ? maxSide / longest : Math.min(1, maxSide / longest);
+          const w = Math.max(1, Math.round(nw * scale));
+          const h = Math.max(1, Math.round(nh * scale));
           const canvas = document.createElement("canvas");
           canvas.width = w;
           canvas.height = h;
@@ -80,9 +91,17 @@ function loadLogo(url: string): Promise<Logo | null> {
         return null;
       }
     })();
-    logoCache.set(url, p);
+    imageCache.set(key, p);
   }
   return p;
+}
+
+async function loadFirst(urls: string[], maxSide: number): Promise<PdfImage | null> {
+  for (const u of urls) {
+    const img = await loadImage(u, maxSide);
+    if (img) return img;
+  }
+  return null;
 }
 
 export async function buildInvoicePdf(
@@ -91,7 +110,8 @@ export async function buildInvoicePdf(
   logoUrl: string = LOGO_URL,
 ): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
-  const logo = await loadLogo(logoUrl);
+  const logo = await loadImage(logoUrl, 256);
+  const signature = await loadFirst(SIGNATURE_URLS, 700);
   const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
   doc.setProperties({
     title: `Invoice ${invoice.number}`,
@@ -347,6 +367,28 @@ export async function buildInvoicePdf(
   block(payRows.length ? "" : "HOW TO PAY", payRows.length ? payPlain : invoice.paymentDetails);
   block("NOTES", invoice.notes);
   block("TERMS", invoice.terms);
+
+  // ------------------------------------------------------------- signature (last page, above the footer)
+  // Uses public/signature.png (or .jpg). Without the file, nothing is drawn.
+  if (signature) {
+    const SIG_BLOCK = 40; // image + line + caption
+    if (y > FOOTER_Y - 6 - SIG_BLOCK) newPage();
+    const boxW = 60;
+    const maxH = 20;
+    let w = Math.min(boxW, maxH * signature.ratio);
+    let h = w / signature.ratio;
+    if (h > maxH) {
+      h = maxH;
+      w = h * signature.ratio;
+    }
+    const lineY = FOOTER_Y - 12;
+    const x = RIGHT - boxW;
+    doc.addImage(signature.dataUrl, "PNG", x + (boxW - w) / 2, lineY - 2 - h, w, h);
+    doc.setDrawColor(...MUTED);
+    doc.setLineWidth(0.3);
+    doc.line(x, lineY, RIGHT, lineY);
+    text("Authorised signature", x + boxW / 2, lineY + 4.2, { size: 8, color: MUTED, align: "center" });
+  }
 
   // ------------------------------------------------------------- stamp (paid / void) on page 1
   if (status === "paid" || status === "void") {
