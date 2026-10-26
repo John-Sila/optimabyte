@@ -387,7 +387,7 @@ export async function buildInvoicePdf(
     doc.setDrawColor(...MUTED);
     doc.setLineWidth(0.3);
     doc.line(x, lineY, RIGHT, lineY);
-    text("Authorised signature", x + boxW / 2, lineY + 4.2, { size: 8, color: MUTED, align: "center" });
+    text("J. K. Sila", x + boxW / 2, lineY + 4.2, { size: 8, color: MUTED, align: "center" });
   }
 
   // ------------------------------------------------------------- stamp (paid / void) on page 1
