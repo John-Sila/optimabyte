@@ -116,7 +116,7 @@ service cloud.firestore {
         && money(d.discount) && money(d.subtotal) && money(d.vat) && money(d.total)
         && d.vatRate is number && d.vatRate >= 0 && d.vatRate <= 100
         && shortStr(d.notes, 5000) && shortStr(d.terms, 5000) && shortStr(d.paymentDetails, 5000)
-        && d.payments is list && d.payments.size() == 0
+        && d.payments is list && d.payments.size() <= 50
         && d.voided == false
         && d.pdfSize == 0
         && d.createdAt == request.time;
@@ -125,7 +125,7 @@ service cloud.firestore {
     match /invoices/{invoiceId} {
       allow read, delete: if isAdmin();
       allow create: if isAdmin() && validNewInvoice();
-      // After creation only payments, the void flag and the stored PDF size may change.
+      // An invoice may be created with payments already received. After creation only payments, the void flag and the stored PDF size may change.
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments', 'voided', 'pdfSize'])
         && request.resource.data.payments is list && request.resource.data.payments.size() <= 200

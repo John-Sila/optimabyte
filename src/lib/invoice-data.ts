@@ -213,6 +213,8 @@ export interface NewInvoiceInput {
   notes: string;
   terms: string;
   paymentDetails: string;
+  /** Payments already received when the invoice is created (installments paid before it was issued). */
+  payments: Payment[];
 }
 
 /**
@@ -249,7 +251,7 @@ export async function createInvoice(
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,
-      payments: [],
+      payments: input.payments,
       voided: false,
       pdfSize: 0,
       createdAt: serverTimestamp(),
@@ -273,7 +275,7 @@ export async function createInvoice(
     subtotal: totals.subtotal,
     vat: totals.vat,
     total: totals.total,
-    payments: [],
+    payments: input.payments,
     voided: false,
     pdfSize: 0,
     createdAt: new Date(),

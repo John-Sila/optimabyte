@@ -28,8 +28,70 @@ const FOOTER_Y = PAGE_H - 12;
 const fmtDate = (iso: string) =>
   parseISODate(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-export async function buildInvoicePdf(invoice: Invoice, settings: InvoiceSettings): Promise<Blob> {
+// ------------------------------------------------------------- logo
+// public/logo.svg is fetched in the browser and drawn onto a canvas to get a PNG,
+// because jsPDF cannot embed SVG. If anything fails the PDF simply has no logo.
+
+export const LOGO_URL = "/logo.svg";
+
+interface Logo {
+  dataUrl: string;
+  /** width / height */
+  ratio: number;
+}
+
+const logoCache = new Map<string, Promise<Logo | null>>();
+
+function loadLogo(url: string): Promise<Logo | null> {
+  if (typeof document === "undefined") return Promise.resolve(null);
+  let p = logoCache.get(url);
+  if (!p) {
+    p = (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        try {
+          const img = new Image();
+          img.decoding = "async";
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error("logo-decode"));
+            img.src = objectUrl;
+          });
+          // SVGs without width/height report 0, so fall back to a square.
+          const nw = img.naturalWidth || 256;
+          const nh = img.naturalHeight || 256;
+          const ratio = nw / nh;
+          const h = 256;
+          const w = Math.max(1, Math.round(h * ratio));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return null;
+          ctx.drawImage(img, 0, 0, w, h);
+          return { dataUrl: canvas.toDataURL("image/png"), ratio };
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      } catch {
+        return null;
+      }
+    })();
+    logoCache.set(url, p);
+  }
+  return p;
+}
+
+export async function buildInvoicePdf(
+  invoice: Invoice,
+  settings: InvoiceSettings,
+  logoUrl: string = LOGO_URL,
+): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
+  const logo = await loadLogo(logoUrl);
   const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
   doc.setProperties({
     title: `Invoice ${invoice.number}`,
@@ -66,12 +128,21 @@ export async function buildInvoicePdf(invoice: Invoice, settings: InvoiceSetting
   doc.setFillColor(...GOLD);
   doc.rect(0, 4, PAGE_W, 1, "F");
 
+  // Logo box: 20 mm tall, width follows the logo's proportions (capped), text sits to its right.
+  let textX = MARGIN;
+  if (logo) {
+    const h = 20;
+    const w = Math.min(h * logo.ratio, 40);
+    doc.addImage(logo.dataUrl, "PNG", MARGIN, 11, w, w / logo.ratio);
+    textX = MARGIN + w + 5;
+  }
+
   y = 20;
-  text(settings.businessName || "OptimaByte Softwares Inc", MARGIN, y, { size: 16, bold: true, color: NAVY });
+  text(settings.businessName || "OptimaByte Softwares Inc", textX, y, { size: 16, bold: true, color: NAVY });
   y += 6;
   const bizLines = [settings.address, settings.email, settings.phone, settings.kraPin ? `KRA PIN: ${settings.kraPin}` : ""].filter(Boolean);
   for (const l of bizLines) {
-    text(l, MARGIN, y, { size: 9, color: MUTED });
+    text(l, textX, y, { size: 9, color: MUTED });
     y += 4.3;
   }
 
@@ -181,16 +252,38 @@ export async function buildInvoicePdf(invoice: Invoice, settings: InvoiceSetting
   // ------------------------------------------------------------- payments received
   if (invoice.payments.length) {
     if (y > PAGE_H - 60) newPage();
-    text("PAYMENTS RECEIVED", MARGIN, y, { size: 8, bold: true, color: GOLD });
-    y += 5;
-    for (const p of invoice.payments) {
-      if (y > PAGE_H - 30) newPage();
-      const label = `${fmtDate(p.date)}  -  ${p.method}${p.reference ? ` (${p.reference})` : ""}`;
-      text(label, MARGIN, y, { size: 9, color: MUTED });
-      text(formatMoney(p.amount), RIGHT, y, { size: 9, align: "right" });
-      y += 5;
+    const PAY = { date: MARGIN + 3, method: MARGIN + 38, amount: 150, balance: RIGHT - 3 };
+    const payHeader = () => {
+      text("PAYMENTS RECEIVED", MARGIN, y, { size: 8, bold: true, color: GOLD });
+      y += 3;
+      doc.setFillColor(...SOFT);
+      doc.rect(MARGIN, y, PAGE_W - MARGIN * 2, 7, "F");
+      text("DATE", PAY.date, y + 4.8, { size: 7.5, bold: true, color: MUTED });
+      text("METHOD / REFERENCE", PAY.method, y + 4.8, { size: 7.5, bold: true, color: MUTED });
+      text("PAID", PAY.amount, y + 4.8, { size: 7.5, bold: true, color: MUTED, align: "right" });
+      text("BALANCE AFTER", PAY.balance, y + 4.8, { size: 7.5, bold: true, color: MUTED, align: "right" });
+      y += 7;
+    };
+    if (y > PAGE_H - 60) newPage();
+    payHeader();
+    // Oldest first, so the running balance reads top to bottom.
+    const ordered = [...invoice.payments].sort((a, b) => a.date.localeCompare(b.date));
+    let running = invoice.total;
+    for (const p of ordered) {
+      if (y > PAGE_H - 30) {
+        newPage();
+        payHeader();
+      }
+      running = Math.max(Math.round((running - p.amount) * 100) / 100, 0);
+      text(fmtDate(p.date), PAY.date, y + 5, { size: 9 });
+      text(`${p.method}${p.reference ? ` (${p.reference})` : ""}`, PAY.method, y + 5, { size: 9, color: MUTED });
+      text(formatMoney(p.amount, "").trim(), PAY.amount, y + 5, { size: 9, bold: true, align: "right" });
+      text(formatMoney(running, "").trim(), PAY.balance, y + 5, { size: 9, align: "right" });
+      y += 7;
+      doc.setDrawColor(...LINE);
+      doc.line(MARGIN, y, RIGHT, y);
     }
-    y += 4;
+    y += 8;
   }
 
   // ------------------------------------------------------------- payment details, notes, terms

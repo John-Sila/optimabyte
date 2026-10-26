@@ -9,14 +9,17 @@ import { useInvoiceData } from "@/lib/invoice-context";
 import { createInvoice, getInvoicePdf, saveClient } from "@/lib/invoice-data";
 import { subscribeReports, type Report } from "@/lib/admin-data";
 import {
+  PAYMENT_METHODS,
   addDaysISO,
   calcTotals,
   formatInvoiceNumber,
   formatMoney,
   lineAmount,
+  paidTotal,
   todayISO,
   type ClientSnapshot,
   type Invoice,
+  type Payment,
 } from "@/lib/invoice-types";
 import { Field, SectionTitle, cardClass, downloadBlob, selectClass, showBlob } from "./shared";
 
@@ -25,6 +28,14 @@ interface ItemDraft {
   description: string;
   qty: string;
   unitPrice: string;
+}
+
+interface PaymentDraft {
+  key: number;
+  amount: string;
+  date: string;
+  method: string;
+  reference: string;
 }
 
 const EMAIL_RE = /^[^@\s/|]+@[^@\s/|]+\.[^@\s/|]+$/;
@@ -44,6 +55,7 @@ export default function InvoiceForm() {
   const [dueTouched, setDueTouched] = useState(false);
   const [items, setItems] = useState<ItemDraft[]>(() => [newItem()]);
   const [discount, setDiscount] = useState("");
+  const [payments, setPayments] = useState<PaymentDraft[]>([]);
   const [vatOn, setVatOn] = useState(false);
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
@@ -94,6 +106,20 @@ export default function InvoiceForm() {
     [items, discount, vatRate], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  const parsedPayments = payments.map((p) => ({ ...p, value: Number(p.amount) || 0 }));
+  const paidSoFar = Math.round(parsedPayments.reduce((sum, p) => sum + p.value, 0) * 100) / 100;
+  const balanceNow = Math.max(Math.round((totals.total - paidSoFar) * 100) / 100, 0);
+
+  const newPayment = (): PaymentDraft => ({
+    key: nextKey.current++,
+    amount: "",
+    date: todayISO(),
+    method: PAYMENT_METHODS[0],
+    reference: "",
+  });
+  const setPayment = (key: number, patch: Partial<PaymentDraft>) =>
+    setPayments((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)));
+
   const pickClient = (id: string) => {
     setClientId(id);
     const c = clients.find((x) => x.id === id);
@@ -122,6 +148,7 @@ export default function InvoiceForm() {
     setIssueDate(todayISO());
     setItems([newItem()]);
     setDiscount("");
+    setPayments([]);
     setNotes("");
     applyDefaults();
   };
@@ -137,6 +164,19 @@ export default function InvoiceForm() {
     if (lines.some((i) => i.unitPrice < 0)) return toast.error("Prices cannot be negative");
     if (totals.total <= 0) return toast.error("The invoice total must be above zero");
     if (dueDate < issueDate) return toast.error("The due date cannot be before the issue date");
+
+    const paid = parsedPayments.filter((p) => p.value > 0 || p.reference.trim());
+    if (paid.some((p) => !(p.value > 0))) return toast.error("Every payment needs an amount above zero");
+    if (paid.some((p) => !p.date)) return toast.error("Every payment needs a date");
+    if (paid.some((p) => p.date > todayISO())) return toast.error("A payment date cannot be in the future. Record it when it arrives.");
+    if (paidSoFar > totals.total + 0.005) return toast.error(`Payments (${formatMoney(paidSoFar)}) are more than the invoice total`);
+    const initialPayments: Payment[] = paid.map((p) => ({
+      id: crypto.randomUUID(),
+      amount: p.value,
+      method: p.method,
+      date: p.date,
+      reference: p.reference.trim(),
+    }));
 
     setBusy(true);
     try {
@@ -167,6 +207,7 @@ export default function InvoiceForm() {
           notes: notes.trim(),
           terms: terms.trim(),
           paymentDetails: paymentDetails.trim(),
+          payments: initialPayments,
         },
         settings,
       );
@@ -205,7 +246,8 @@ export default function InvoiceForm() {
           </div>
           <h2 className="text-xl font-bold text-foreground">{done.number} is ready</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {formatMoney(done.total)} for {done.client.name}.{" "}
+            {formatMoney(done.total)} for {done.client.name}
+            {paidTotal(done) > 0 ? `, ${formatMoney(paidTotal(done))} already paid, balance ${formatMoney(Math.max(done.total - paidTotal(done), 0))}` : ""}.{" "}
             {pdfWarn
               ? "The invoice was saved, but its PDF could not be stored yet. It will be built again when you open it."
               : "The PDF has been saved with the invoice record."}
@@ -307,8 +349,41 @@ export default function InvoiceForm() {
                 </div>
               ))}
             </div>
-            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => setItems((p) => [...p, newItem()])}>
+            <Button type="button" variant="outline" size="sm" className="mt-4" disabled={items.length >= 100} onClick={() => setItems((p) => [...p, newItem()])}>
               <Plus className="h-4 w-4" /> Add item
+            </Button>
+          </section>
+
+          {/* payments already received */}
+          <section className={cardClass}>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-semibold">Payments already received</h2>
+              <span className="text-xs text-muted-foreground">Optional</span>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              If the client has already paid part of this invoice, add each payment here with its date. They appear on the PDF with the balance after each one. Payments that arrive later are recorded from Current invoices.
+            </p>
+            {payments.length > 0 && (
+              <div className="space-y-3">
+                {payments.map((p, idx) => (
+                  <div key={p.key} className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[130px_140px_minmax(0,1fr)_minmax(0,1fr)_36px] sm:items-center">
+                    <Input aria-label={`Payment ${idx + 1} amount`} type="number" inputMode="decimal" min="0" step="0.01" placeholder="Amount" value={p.amount} onChange={(e) => setPayment(p.key, { amount: e.target.value })} />
+                    <Input aria-label={`Payment ${idx + 1} date`} type="date" max={todayISO()} value={p.date} onChange={(e) => setPayment(p.key, { date: e.target.value })} />
+                    <select aria-label={`Payment ${idx + 1} method`} className={selectClass} value={p.method} onChange={(e) => setPayment(p.key, { method: e.target.value })}>
+                      {PAYMENT_METHODS.map((m) => (
+                        <option key={m}>{m}</option>
+                      ))}
+                    </select>
+                    <Input aria-label={`Payment ${idx + 1} reference`} placeholder="Reference (M-Pesa code)" maxLength={60} value={p.reference} onChange={(e) => setPayment(p.key, { reference: e.target.value })} />
+                    <Button type="button" size="icon" variant="ghost" aria-label={`Remove payment ${idx + 1}`} onClick={() => setPayments((prev) => prev.filter((x) => x.key !== p.key))}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button type="button" variant="outline" size="sm" className={payments.length ? "mt-4" : ""} disabled={payments.length >= 50} onClick={() => setPayments((prev) => [...prev, newPayment()])}>
+              <Plus className="h-4 w-4" /> Add payment
             </Button>
           </section>
 
@@ -316,9 +391,9 @@ export default function InvoiceForm() {
           <section className={cardClass}>
             <h2 className="mb-4 text-base font-semibold">Details on the PDF</h2>
             <div className="grid gap-4">
-              <Field label="How to pay" htmlFor="inv-pay"><Textarea id="inv-pay" rows={3} value={paymentDetails} onChange={(e) => setPaymentDetails(e.target.value)} /></Field>
-              <Field label="Notes (optional)" htmlFor="inv-notes"><Textarea id="inv-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
-              <Field label="Terms" htmlFor="inv-terms"><Textarea id="inv-terms" rows={2} value={terms} onChange={(e) => setTerms(e.target.value)} /></Field>
+              <Field label="How to pay" htmlFor="inv-pay"><Textarea id="inv-pay" maxLength={2000} rows={3} value={paymentDetails} onChange={(e) => setPaymentDetails(e.target.value)} /></Field>
+              <Field label="Notes (optional)" htmlFor="inv-notes"><Textarea id="inv-notes" maxLength={2000} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+              <Field label="Terms" htmlFor="inv-terms"><Textarea id="inv-terms" maxLength={2000} rows={2} value={terms} onChange={(e) => setTerms(e.target.value)} /></Field>
             </div>
           </section>
         </div>
@@ -344,6 +419,12 @@ export default function InvoiceForm() {
                 <dd>{formatMoney(totals.vat)}</dd>
               </div>
               <div className="flex justify-between border-t border-border pt-3 text-base font-bold"><dt>Total</dt><dd>{formatMoney(totals.total)}</dd></div>
+              {paidSoFar > 0 && (
+                <>
+                  <div className="flex justify-between text-emerald-700 dark:text-emerald-400"><dt>Paid</dt><dd>- {formatMoney(paidSoFar)}</dd></div>
+                  <div className="flex justify-between rounded-lg bg-primary/10 px-3 py-2 text-base font-bold"><dt>Balance due</dt><dd>{formatMoney(balanceNow)}</dd></div>
+                </>
+              )}
             </dl>
             <Button type="submit" className="mt-5 w-full" size="lg" disabled={busy || !ready}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}
