@@ -345,16 +345,17 @@ export const industries: Industry[] = [
 ];
 
 export const techStack = [
-  "Flutter",
-  "React",
-  "TypeScript",
-  "Firebase",
-  "PostgreSQL",
-  "Node.js",
+  "Database",
+  "Websites",
+  "Delivery Fleet Managenent (Bolt, Uber, Faras)",
+  "ERP",
+  "eTIMS",
+  "Graphic Design",
+  "Server Managenent",
   "Android",
   "iOS",
   "M-Pesa payments",
-  "Figma",
+  "macOS",
 ];
 
 export interface Faq {
