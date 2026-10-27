@@ -97,7 +97,7 @@ export default function VerifyBox({ onChange, resetKey = 0, invalid = false }: V
           className="h-7 w-auto max-w-[72px] object-contain"
           draggable={false}
         />
-        <span className="text-[10px] font-medium">Human check</span>
+        {/* <span className="text-[10px] font-medium">Human check</span> */}
         <span className="text-[8px]">
           <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Privacy
