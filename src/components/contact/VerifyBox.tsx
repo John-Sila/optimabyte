@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ShieldCheck } from "lucide-react";
 
 interface VerifyBoxProps {
   onChange: (verified: boolean) => void;
@@ -91,8 +90,13 @@ export default function VerifyBox({ onChange, resetKey = 0, invalid = false }: V
         <span className="text-[15px] text-foreground">I&apos;m not a robot</span>
       </label>
 
-      <div className="flex flex-col items-center gap-0.5 text-center leading-none text-muted-foreground">
-        <ShieldCheck className="h-8 w-8 text-gold-text" aria-hidden="true" />
+      <div className="flex flex-col items-center gap-1 text-center leading-none text-muted-foreground">
+        <img
+          src="/Cloudflare_Logo.png"
+          alt="Cloudflare"
+          className="h-7 w-auto max-w-[72px] object-contain"
+          draggable={false}
+        />
         <span className="text-[10px] font-medium">Human check</span>
         <span className="text-[8px]">
           <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
