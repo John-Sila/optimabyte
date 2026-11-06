@@ -28,6 +28,9 @@ const GEO_NOTE: Record<string, string> = {
   unavailable: "The device could not provide a precise location.",
 };
 
+// Translucent "glass" panel so the map behind the card still shows through the text areas.
+const GLASS = "rounded-xl border border-white/15 bg-card/65 backdrop-blur-md";
+
 function LoginCard({ row, latest }: { row: LoginRecord; latest: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const d = row.device as Record<string, string | number | boolean | undefined>;
@@ -35,9 +38,7 @@ function LoginCard({ row, latest }: { row: LoginRecord; latest: boolean }) {
   const place = n ? [n.city, n.region, n.country].filter(Boolean).join(", ") : "";
 
   // Prefer the precise GPS fix; fall back to the city-level network estimate.
-  const precise = row.geo
-    ? { lat: row.geo.latitude, lng: row.geo.longitude, zoom: 16 }
-    : null;
+  const precise = row.geo ? { lat: row.geo.latitude, lng: row.geo.longitude, zoom: 16 } : null;
   const estimate =
     n?.latitude != null && n?.longitude != null
       ? { lat: n.latitude, lng: n.longitude, zoom: 11 }
@@ -64,107 +65,117 @@ function LoginCard({ row, latest }: { row: LoginRecord; latest: boolean }) {
   ];
 
   return (
-    <article className="animate-fade-up rounded-2xl border border-border bg-card p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
-            <DeviceIcon type={String(d.type ?? "")} />
-          </span>
-          <div>
-            <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-foreground">
-              {String(d.browser ?? "Unknown browser")} on {String(d.os ?? "unknown OS")}
-              {latest && (
-                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-400">
-                  Latest
-                </span>
-              )}
-            </h3>
-            <p className="text-sm text-muted-foreground">{place || "Location unknown"}</p>
-          </div>
-        </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <p className="font-medium text-foreground">{format(row.at, "EEE d MMM yyyy, HH:mm:ss")}</p>
-          <p>{formatDistanceToNow(row.at, { addSuffix: true })}</p>
-        </div>
-      </div>
-
-      {/* Location: map as background, dark translucent overlay, expandable in place */}
-      <div
-        className={`relative mt-4 overflow-hidden rounded-xl border border-border bg-slate-900 transition-[height] duration-300 ease-out ${
-          expanded ? "h-[26rem]" : "h-52"
-        }`}
-      >
-        {mapSrc && (
+    <article className="animate-fade-up relative isolate overflow-hidden rounded-2xl border border-border bg-slate-900 p-5">
+      {/* Map fills the whole card as a background. It fades out while the dedicated map is open. */}
+      {mapSrc && (
+        <>
           <iframe
-            title={`Sign-in location map, ${place || "unknown place"}`}
+            aria-hidden="true"
+            tabIndex={-1}
+            title="Sign-in location map background"
             src={mapSrc}
             loading="lazy"
             referrerPolicy="no-referrer"
-            className={`absolute inset-0 h-full w-full border-0 ${expanded ? "" : "pointer-events-none"}`}
+            className={`pointer-events-none absolute inset-0 -z-20 h-full w-full border-0 transition-opacity duration-300 ${
+              expanded ? "opacity-0" : "opacity-100"
+            }`}
           />
-        )}
+          <div
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-0 -z-10 bg-black/25 transition-opacity duration-300 ${
+              expanded ? "opacity-0" : "opacity-100"
+            }`}
+          />
+        </>
+      )}
 
-        {/* Dark translucency: strong when collapsed, fades away when expanded so the map is usable */}
-        <div
-          aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/45 transition-opacity duration-300 ${
-            expanded ? "opacity-0" : "opacity-100"
-          }`}
-        />
-
-        <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-              <MapPin className="h-4 w-4 text-gold-text" />
-              {precise ? "Precise location" : "Approximate location"}
-            </p>
-            {mapSrc && (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-                className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                {expanded ? (
-                  <>
-                    <Minimize2 className="h-3.5 w-3.5" /> Collapse map
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="h-3.5 w-3.5" /> Expand map
-                  </>
+      <div className={`${GLASS} p-4`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+              <DeviceIcon type={String(d.type ?? "")} />
+            </span>
+            <div>
+              <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-foreground">
+                {String(d.browser ?? "Unknown browser")} on {String(d.os ?? "unknown OS")}
+                {latest && (
+                  <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-400">
+                    Latest
+                  </span>
                 )}
-              </button>
-            )}
+              </h3>
+              <p className="text-sm text-muted-foreground">{place || "Location unknown"}</p>
+            </div>
           </div>
-
-          <div className="pointer-events-auto rounded-lg bg-black/65 p-3 text-white backdrop-blur-sm">
-            {row.geo ? (
-              <p className="text-sm">
-                {row.geo.latitude}, {row.geo.longitude}{" "}
-                <span className="text-white/70">(accurate to about {row.geo.accuracyM} m)</span>{" "}
-                <a
-                  href={`https://www.google.com/maps?q=${row.geo.latitude},${row.geo.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-gold-text hover:underline"
-                >
-                  Open in Maps
-                </a>
-              </p>
-            ) : (
-              <p className="text-sm text-white/80">{GEO_NOTE[row.geoStatus] ?? GEO_NOTE.unavailable}</p>
-            )}
-            {n?.latitude != null && n?.longitude != null && (
-              <p className="mt-1 text-xs text-white/60">
-                Network estimate: {n.latitude}, {n.longitude} (city level only)
-              </p>
-            )}
+          <div className="text-right text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">{format(row.at, "EEE d MMM yyyy, HH:mm:ss")}</p>
+            <p>{formatDistanceToNow(row.at, { addSuffix: true })}</p>
           </div>
         </div>
       </div>
 
-      <dl className="mt-4 grid gap-x-6 gap-y-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`${GLASS} mt-4 p-4`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <MapPin className="h-4 w-4 text-gold-text" />
+            {precise ? "Precise location" : "Approximate location"}
+          </p>
+          {mapSrc && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {expanded ? (
+                <>
+                  <Minimize2 className="h-3.5 w-3.5" /> Collapse map
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3.5 w-3.5" /> Expand map
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {row.geo ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {row.geo.latitude}, {row.geo.longitude} (accurate to about {row.geo.accuracyM} m){" "}
+            <a
+              href={`https://www.google.com/maps?q=${row.geo.latitude},${row.geo.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary hover:underline"
+            >
+              Open in Maps
+            </a>
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">{GEO_NOTE[row.geoStatus] ?? GEO_NOTE.unavailable}</p>
+        )}
+        {n?.latitude != null && n?.longitude != null && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Network estimate: {n.latitude}, {n.longitude} (city level only)
+          </p>
+        )}
+
+        {/* Expanded: the map takes its own space, fully visible and interactive. */}
+        {expanded && mapSrc && (
+          <div className="mt-3 h-96 overflow-hidden rounded-lg border border-border bg-slate-900">
+            <iframe
+              title={`Sign-in location map, ${place || "unknown place"}`}
+              src={mapSrc}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              className="h-full w-full border-0"
+            />
+          </div>
+        )}
+      </div>
+
+      <dl className={`${GLASS} mt-4 grid gap-x-6 gap-y-2 p-4 text-xs sm:grid-cols-2 lg:grid-cols-3`}>
         {details.map(([k, v]) => (
           <div key={k} className="min-w-0">
             <dt className="font-semibold text-foreground">{k}</dt>
