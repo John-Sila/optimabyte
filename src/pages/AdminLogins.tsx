@@ -29,7 +29,10 @@ const GEO_NOTE: Record<string, string> = {
 };
 
 // Translucent "glass" panel so the map behind the card still shows through the text areas.
-const GLASS = "rounded-xl border border-white/15 bg-card/65 backdrop-blur-md";
+// Uses plain white/slate with alpha (not the theme "card" token) so the transparency always applies.
+// Lower the number after the slash (e.g. /30) to see more map, raise it (e.g. /60) for more readable text.
+const GLASS =
+  "rounded-xl border border-white/20 bg-white/40 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/45";
 
 function LoginCard({ row, latest }: { row: LoginRecord; latest: boolean }) {
   const [expanded, setExpanded] = useState(false);
