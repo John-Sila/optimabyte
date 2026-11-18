@@ -99,11 +99,11 @@ export default function VerifyBox({ onChange, resetKey = 0, invalid = false }: V
         />
         {/* <span className="text-[10px] font-medium">Human check</span> */}
         <span className="text-[8px]">
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">
+          <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Privacy
           </a>{" "}
-          -{" "}
-          <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">
+          •{" "}
+          <a href="https://www.cloudflare.com/website-terms/" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Terms
           </a>
         </span>
